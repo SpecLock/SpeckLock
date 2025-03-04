@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom toggle switch styles */
+.toggle-checkbox:checked {
+  right: 0;
+  border-color: #4f46e5;
+}
+.toggle-checkbox:checked + .toggle-label {
+  background-color: #4f46e5;
+}
+
+/* Dark mode specific styles */
+.dark .toggle-checkbox:checked {
+  border-color: #6366f1;
+}
+.dark .toggle-checkbox:checked + .toggle-label {
+  background-color: #6366f1;
+}
