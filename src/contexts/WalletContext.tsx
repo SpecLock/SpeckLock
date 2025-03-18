@@ -42,10 +42,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const connectWallet = async () => {
     try {
       // Check if MetaMask is installed
-      if (window.ethereum) {
+      if (window.avalanche) {
         // Request account access
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await window.avalanche.request({ method: 'eth_requestAccounts' });
+        const provider = new ethers.BrowserProvider(window.avalanche);
         const network = await provider.getNetwork();
         const balance = await provider.getBalance(accounts[0]);
         
@@ -55,13 +55,13 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         setIsConnected(true);
         
         // Listen for account changes
-        window.ethereum.on('accountsChanged', (newAccounts: string[]) => {
+        window.avalanche.on('accountsChanged', (newAccounts: string[]) => {
           setAccount(newAccounts[0]);
           updateBalance(newAccounts[0], provider);
         });
         
         // Listen for chain changes
-        window.ethereum.on('chainChanged', (newChainId: string) => {
+        window.avalanche.on('chainChanged', (newChainId: string) => {
           setChainId(Number(newChainId));
         });
       } else {

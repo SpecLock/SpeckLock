@@ -59,7 +59,7 @@ const CreateProject: React.FC = () => {
     if (!developerAddress.trim()) {
       newErrors.developerAddress = 'Developer address is required';
     } else if (!/^0x[a-fA-F0-9]{40}$/.test(developerAddress)) {
-      newErrors.developerAddress = 'Invalid Ethereum address';
+      newErrors.developerAddress = 'Invalid avalanche address';
     }
     
     milestones.forEach((milestone, index) => {
@@ -192,7 +192,7 @@ const CreateProject: React.FC = () => {
             
             <div className="mb-4">
               <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
-                Developer Ethereum Address
+                Developer avalanche Address
               </label>
               <input
                 type="text"
@@ -205,7 +205,7 @@ const CreateProject: React.FC = () => {
                 <p className="mt-1 text-sm text-red-500">{errors.developerAddress}</p>
               )}
               <p className={`mt-1 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                Enter the Ethereum address of the developer who will work on this project
+                Enter the avalanche address of the developer who will work on this project
               </p>
             </div>
           </div>
