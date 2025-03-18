@@ -21,7 +21,7 @@ const mockUserData = {
   projectsCompleted: 12,
   projectsInProgress: 3,
   reputation: 4.8,
-  totalValue: '32.5 ETH',
+  totalValue: '32.5 USDC',
   role: 'Client',
   transactions: 47,
   badges: [
@@ -36,7 +36,7 @@ const mockUserData = {
       role: 'Client', 
       status: 'In Progress', 
       lastActivity: '2 hours ago',
-      value: '5.5 ETH'
+      value: '5.5 USDC'
     },
     { 
       id: '2', 
@@ -44,7 +44,7 @@ const mockUserData = {
       role: 'Client', 
       status: 'In Progress', 
       lastActivity: '5 hours ago',
-      value: '3.8 ETH'
+      value: '3.8 USDC'
     },
     { 
       id: '3', 
@@ -52,7 +52,7 @@ const mockUserData = {
       role: 'Client', 
       status: 'Completed', 
       lastActivity: '2 days ago',
-      value: '2.5 ETH'
+      value: '2.5 USDC'
     }
   ]
 };
@@ -65,7 +65,7 @@ const mockDeveloperData = {
   projectsCompleted: 15,
   projectsInProgress: 2,
   reputation: 4.9,
-  totalValue: '45.2 ETH',
+  totalValue: '45.2 USDC',
   role: 'Developer',
   transactions: 63,
   badges: [
@@ -80,7 +80,7 @@ const mockDeveloperData = {
       role: 'Developer', 
       status: 'In Progress', 
       lastActivity: '2 hours ago',
-      value: '5.5 ETH'
+      value: '5.5 USDC'
     },
     { 
       id: '4', 
@@ -88,7 +88,7 @@ const mockDeveloperData = {
       role: 'Developer', 
       status: 'In Progress', 
       lastActivity: '1 day ago',
-      value: '7.2 ETH'
+      value: '7.2 USDC'
     },
     { 
       id: '6', 
@@ -96,7 +96,7 @@ const mockDeveloperData = {
       role: 'Developer', 
       status: 'Completed', 
       lastActivity: '1 week ago',
-      value: '4.3 ETH'
+      value: '4.3 USDC'
     }
   ]
 };

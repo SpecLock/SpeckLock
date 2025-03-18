@@ -59,7 +59,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {isConnected ? (
               <>
                 <div className={`flex items-center space-x-2 ${darkMode ? 'bg-dark-700' : 'bg-indigo-700'} rounded-full px-4 py-1`}>
-                  <span className="font-medium">{balance} ETH</span>
+                  <span className="font-medium">{balance} USDC</span>
                 </div>
                 <div className={`flex items-center space-x-2 ${darkMode ? 'bg-dark-700' : 'bg-indigo-700'} rounded-full px-4 py-1`}>
                   <span className="font-medium truncate w-28">{account}</span>
@@ -123,7 +123,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {isConnected ? (
               <div className="flex flex-col space-y-2 pb-2">
                 <div className="flex items-center justify-between">
-                  <span>{balance} ETH</span>
+                  <span>{balance} USDC</span>
                   <span className="truncate w-32">{account}</span>
                 </div>
                 <div className="flex justify-between items-center">
