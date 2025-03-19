@@ -8,6 +8,24 @@ import ProjectDetails from './pages/ProjectDetails';
 import CreateProject from './pages/CreateProject';
 import Profile from './pages/Profile';
 
+/**
+ * The main application component that sets up the overall structure and routing for the app.
+ * 
+ * This component uses several providers and components to set up the application:
+ * - `ThemeProvider`: Provides theming capabilities to the entire app.
+ * - `WalletProvider`: Manages wallet-related state and functionality.
+ * - `Router`: Handles routing within the app.
+ * - `Layout`: Defines the common layout structure for the app.
+ * - `Routes`: Defines the different routes and their corresponding components.
+ * 
+ * Routes:
+ * - `/`: Renders the `Dashboard` component.
+ * - `/project/:id`: Renders the `ProjectDetails` component for a specific project.
+ * - `/create-project`: Renders the `CreateProject` component.
+ * - `/profile`: Renders the `Profile` component.
+ * 
+ * @returns {JSX.Element} The main application component.
+ */
 function App() {
   return (
     <ThemeProvider>

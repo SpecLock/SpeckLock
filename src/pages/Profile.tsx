@@ -401,7 +401,7 @@ const Profile: React.FC = () => {
                         <div className="flex items-center">
                           <Wallet size={20} className={`${darkMode ? 'text-indigo-400' : 'text-indigo-600'} mr-3`} />
                           <div>
-                            <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>Ethereum Wallet</p>
+                            <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>avalanche Wallet</p>
                             <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{userData.address}</p>
                           </div>
                         </div>
