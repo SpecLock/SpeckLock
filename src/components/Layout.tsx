@@ -21,7 +21,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { account, balance, isConnected, isClient, isDeveloper, connectWallet, disconnectWallet, switchRole } = useWallet();
+  const { account, balance, isConnected, isClient, isDeveloper, connectWallet, disconnectWallet, switchRole, networkName } = useWallet();
   const { darkMode, toggleDarkMode } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const location = useLocation();
@@ -59,7 +59,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {isConnected ? (
               <>
                 <div className={`flex items-center space-x-2 ${darkMode ? 'bg-dark-700' : 'bg-indigo-700'} rounded-full px-4 py-1`}>
-                  <span className="font-medium">{balance} USDC</span>
+                  <span className="font-medium">{balance} AVAX</span>
+                  {networkName && (
+                    <>
+                      <span className="mx-1">•</span>
+                      <span className="text-sm">{networkName}</span>
+                    </>
+                  )}
                 </div>
                 <div className={`flex items-center space-x-2 ${darkMode ? 'bg-dark-700' : 'bg-indigo-700'} rounded-full px-4 py-1`}>
                   <span className="font-medium truncate w-28">{account}</span>
@@ -123,7 +129,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {isConnected ? (
               <div className="flex flex-col space-y-2 pb-2">
                 <div className="flex items-center justify-between">
-                  <span>{balance} USDC</span>
+                  <span>{balance} AVAX</span>
                   <span className="truncate w-32">{account}</span>
                 </div>
                 <div className="flex justify-between items-center">
