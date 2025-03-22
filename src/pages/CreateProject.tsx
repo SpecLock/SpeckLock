@@ -11,6 +11,12 @@ import {
   CheckCircle,
   Wallet
 } from 'lucide-react';
+import { ethers } from 'ethers';
+
+const FACTORY_ADDRESS = '0x1EaC27898BA06935B4Ec1Ef9ab7d8292c8421789';
+const FACTORY_ABI = [
+  "function createProject(string memory _name, string memory _description, address payable _developerAddress, uint256 _totalCapital) external payable returns (address projectAddress)",
+];
 
 const CreateProject: React.FC = () => {
   const { isConnected, isClient, account } = useWallet();
@@ -26,9 +32,15 @@ const CreateProject: React.FC = () => {
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  
+  const [totalAmount, setTotalAmount] = useState<string>('0');
+  const [transactionHash, setTransactionHash] = useState<string>('');
+
   const addMilestone = () => {
-    setMilestones([...milestones, { title: '', description: '', amount: '', dueDate: '' }]);
+    setMilestones(prev => {
+      const newMilestones = [...prev, { title: '', description: '', amount: '', dueDate: '' }];
+      setTimeout(() => calculateTotalAmount(), 0);
+      return newMilestones;
+    });
   };
   
   const removeMilestone = (index: number) => {
@@ -36,6 +48,7 @@ const CreateProject: React.FC = () => {
       const updatedMilestones = [...milestones];
       updatedMilestones.splice(index, 1);
       setMilestones(updatedMilestones);
+      setTimeout(() => calculateTotalAmount(), 0);
     }
   };
   
@@ -43,6 +56,9 @@ const CreateProject: React.FC = () => {
     const updatedMilestones = [...milestones];
     updatedMilestones[index] = { ...updatedMilestones[index], [field]: value };
     setMilestones(updatedMilestones);
+    if (field === 'amount') {
+      setTimeout(() => calculateTotalAmount(), 0);
+    }
   };
   
   const validateForm = () => {
@@ -87,23 +103,56 @@ const CreateProject: React.FC = () => {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-  
-  const handleSubmit = (e: React.FormEvent) => {
+
+  const calculateTotalAmount = () => {
+    const total = milestones.reduce((sum, milestone) => {
+      return sum + (parseFloat(milestone.amount) || 0);
+    }, 0);
+    setTotalAmount(total.toString());
+    return total;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (validateForm()) {
       setIsSubmitting(true);
       
-      // In a real app, this would interact with the smart contract
-      setTimeout(() => {
-        setIsSubmitting(false);
+      try {
+        if (!window.ethereum) {
+          throw new Error("MetaMask is not installed");
+        }
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, signer);
+
+        const totalCapital = ethers.parseEther(totalAmount);
+        
+        const tx = await factory.createProject(
+          projectName,
+          projectDescription,
+          developerAddress,
+          totalCapital,
+          { value: totalCapital }
+        );
+
+        setTransactionHash(tx.hash);
+        await tx.wait();
         setIsSuccess(true);
         
-        // Redirect to dashboard after success
         setTimeout(() => {
           navigate('/');
         }, 2000);
-      }, 1500);
+      } catch (error: any) {
+        console.error('Contract error:', error);
+        setErrors(prev => ({
+          ...prev,
+          submit: error.message || 'Failed to create project'
+        }));
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
   
@@ -318,7 +367,10 @@ const CreateProject: React.FC = () => {
             </div>
           </div>
           
-          <div className={`${darkMode ? 'border-t border-dark-700' : 'border-t'} pt-6 flex justify-end`}>
+          <div className={`${darkMode ? 'border-t border-dark-700' : 'border-t'} pt-6 flex justify-between items-center`}>
+            <div className={`${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              Total Amount: {totalAmount} AVAX
+            </div>
             <button
               type="submit"
               disabled={isSubmitting}
