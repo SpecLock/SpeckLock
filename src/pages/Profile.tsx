@@ -102,7 +102,7 @@ const mockDeveloperData = {
 };
 
 const Profile: React.FC = () => {
-  const { isConnected, isClient, isDeveloper } = useWallet();
+  const { isConnected, isClient, isDeveloper, connectWallet } = useWallet();
   const { darkMode } = useTheme();
   const [activeTab, setActiveTab] = useState('projects');
   
@@ -123,6 +123,7 @@ const Profile: React.FC = () => {
           Please connect your wallet to view your profile.
         </p>
         <button 
+          onClick={connectWallet}
           className={`flex items-center space-x-2 ${darkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white px-6 py-3 rounded-lg transition`}
         >
           <Wallet size={20} />

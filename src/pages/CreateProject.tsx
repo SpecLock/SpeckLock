@@ -50,7 +50,7 @@ const FACTORY_ABI = [
 ];
 
 const CreateProject: React.FC = () => {
-  const { isConnected, isClient, account } = useWallet();
+  const { isConnected, isClient, account, connectWallet } = useWallet();
   const { darkMode } = useTheme();
   const navigate = useNavigate();
   
@@ -193,6 +193,7 @@ const CreateProject: React.FC = () => {
           Please connect your wallet to create a new project.
         </p>
         <button 
+          onClick={connectWallet}
           className={`flex items-center space-x-2 ${darkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white px-6 py-3 rounded-lg transition`}
         >
           <Wallet size={20} />
