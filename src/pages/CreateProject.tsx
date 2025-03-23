@@ -13,9 +13,40 @@ import {
 } from 'lucide-react';
 import { ethers } from 'ethers';
 
-const FACTORY_ADDRESS = '0x1EaC27898BA06935B4Ec1Ef9ab7d8292c8421789';
+const FACTORY_ADDRESS = '0x433e3B673B4Edf8D02A3b7A38600eBa1cD6C22C7';
 const FACTORY_ABI = [
-  "function createProject(string memory _name, string memory _description, address payable _developerAddress, uint256 _totalCapital) external payable returns (address projectAddress)",
+  {
+    "inputs": [
+      {"internalType": "string", "name": "_projectName", "type": "string"},
+      {"internalType": "string", "name": "_projectDescription", "type": "string"},
+      {"internalType": "address payable", "name": "_developerAddress", "type": "address"}
+    ],
+    "name": "createProject",
+    "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "_developer", "type": "address"}],
+    "name": "getProjectsByDeveloper",
+    "outputs": [{"internalType": "contract Project[]", "name": "", "type": "address[]"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "_owner", "type": "address"}],
+    "name": "getProjectsByOwner",
+    "outputs": [{"internalType": "contract Project[]", "name": "", "type": "address[]"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "name": "projects",
+    "outputs": [{"internalType": "contract Project", "name": "", "type": "address"}],
+    "stateMutability": "view",
+    "type": "function"
+  }
 ];
 
 const CreateProject: React.FC = () => {
@@ -123,18 +154,15 @@ const CreateProject: React.FC = () => {
           throw new Error("MetaMask is not installed");
         }
 
-        const provider = new ethers.BrowserProvider(window.ethereum);
+        // Use Fuji testnet provider
+        const provider = new ethers.JsonRpcProvider('https://testnet.snowtrace.io/');
         const signer = await provider.getSigner();
         const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, signer);
 
-        const totalCapital = ethers.parseEther(totalAmount);
-        
         const tx = await factory.createProject(
           projectName,
           projectDescription,
-          developerAddress,
-          totalCapital,
-          { value: totalCapital }
+          developerAddress
         );
 
         setTransactionHash(tx.hash);
