@@ -133,7 +133,7 @@ const mockTransactions = [
 ];
 
 const Dashboard: React.FC = () => {
-  const { isConnected, isClient, isDeveloper } = useWallet();
+  const { isConnected, isClient, isDeveloper, connectWallet } = useWallet();
   const { darkMode } = useTheme();
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -158,6 +158,7 @@ const Dashboard: React.FC = () => {
           Connect your wallet to access the dashboard and manage your blockchain projects.
         </p>
         <button 
+          onClick={connectWallet}
           className={`flex items-center space-x-2 ${darkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white px-6 py-3 rounded-lg transition`}
         >
           <Wallet size={20} />
