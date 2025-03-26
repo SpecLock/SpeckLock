@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWallet } from '../contexts/WalletContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { ContractService } from '../services/contractService';
+import { ProjectContractService, ProjectDetails } from '../services/projectContractService';
 import { 
   User, 
   Wallet, 
@@ -10,8 +12,10 @@ import {
   CheckCircle2, 
   AlertCircle,
   Copy,
-  ExternalLink
+  ExternalLink,
+  PlusCircle
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const mockProjectData = {
   projectsCompleted: 12,
@@ -64,6 +68,83 @@ const Profile: React.FC = () => {
   } = useWallet();
   const { darkMode } = useTheme();
   const [activeTab, setActiveTab] = useState('projects');
+  const [projects, setProjects] = useState<ProjectDetails[]>([]);
+  const [loading, setLoading] = useState(false);
+  // Add state for test results
+  const [testResults, setTestResults] = useState<{
+    ownerProjects: string[] | null;
+    devProjects: string[] | null;
+    error: string | null;
+  }>({ ownerProjects: null, devProjects: null, error: null });
+  
+  const contractService = new ContractService();
+  const projectService = new ProjectContractService();
+
+  // Replace the test useEffect with this enhanced version
+  useEffect(() => {
+    const testContractService = async () => {
+      if (account && isConnected) {
+        try {
+          console.log('%c Testing Contract Service Functions', 'background: #222; color: #bada55; font-size: 16px;');
+          console.log('%c Account:', 'color: #00f', account);
+          
+          // Test owner projects
+          console.log('%c Calling getProjectsByOwner...', 'color: #0a0');
+          const ownerProjects = await contractService.getProjectsByOwner(account);
+          console.log('%c Owner Projects:', 'color: #0a0', ownerProjects);
+          
+          // Test developer projects
+          console.log('%c Calling getProjectsByDeveloper...', 'color: #0a0');
+          const devProjects = await contractService.getProjectsByDeveloper(account);
+          console.log('%c Developer Projects:', 'color: #0a0', devProjects);
+          
+          // Store results in state to display in UI
+          setTestResults({ 
+            ownerProjects, 
+            devProjects, 
+            error: null 
+          });
+        } catch (error) {
+          console.error('%c Error testing contract functions:', 'color: #f00', error);
+          setTestResults({ 
+            ownerProjects: null, 
+            devProjects: null, 
+            error: error instanceof Error ? error.message : String(error) 
+          });
+        }
+      }
+    };
+
+    testContractService();
+  }, [account, isConnected]);
+
+  useEffect(() => {
+    const loadProjects = async () => {
+      if (isConnected && account) {
+        setLoading(true);
+        try {
+          let projectAddresses: string[];
+          if (isClient) {
+            projectAddresses = await contractService.getProjectsByOwner(account);
+          } else {
+            projectAddresses = await contractService.getProjectsByDeveloper(account);
+          }
+          
+          const projectDetails = await Promise.all(
+            projectAddresses.map(address => projectService.getProjectDetails(address))
+          );
+          
+          setProjects(projectDetails);
+        } catch (error) {
+          console.error('Error loading projects:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProjects();
+  }, [isConnected, account, isClient, isDeveloper]);
 
   const userData = {
     address: account ? `${account.slice(0, 6)}...${account.slice(-4)}` : '',
@@ -107,6 +188,61 @@ const Profile: React.FC = () => {
   
   return (
     <div className="container mx-auto">
+      {/* Test Results Display - Add this section */}
+      {testResults.ownerProjects !== null || testResults.devProjects !== null || testResults.error ? (
+        <div className={`mb-6 p-4 rounded-lg ${darkMode ? 'bg-dark-800 border border-dark-700' : 'bg-white border border-gray-200'} shadow-md`}>
+          <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} mb-2`}>
+            Contract Function Test Results
+          </h2>
+          
+          {testResults.error ? (
+            <div className="p-3 bg-red-100 text-red-800 rounded mb-3">
+              <strong>Error:</strong> {testResults.error}
+            </div>
+          ) : (
+            <>
+              <div className="mb-3">
+                <h3 className={`text-md font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                  Projects by Owner:
+                </h3>
+                <div className={`p-3 rounded ${darkMode ? 'bg-dark-700' : 'bg-gray-50'}`}>
+                  {testResults.ownerProjects?.length === 0 ? (
+                    <span className="text-gray-500">No projects found</span>
+                  ) : (
+                    <ul className="list-disc pl-5">
+                      {testResults.ownerProjects?.map((address, index) => (
+                        <li key={index} className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                          {address}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+              
+              <div>
+                <h3 className={`text-md font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                  Projects by Developer:
+                </h3>
+                <div className={`p-3 rounded ${darkMode ? 'bg-dark-700' : 'bg-gray-50'}`}>
+                  {testResults.devProjects?.length === 0 ? (
+                    <span className="text-gray-500">No projects found</span>
+                  ) : (
+                    <ul className="list-disc pl-5">
+                      {testResults.devProjects?.map((address, index) => (
+                        <li key={index} className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                          {address}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      ) : null}
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Profile Card */}
         <div className="md:col-span-1">
@@ -261,40 +397,83 @@ const Profile: React.FC = () => {
             <div className="p-6">
               {activeTab === 'projects' && (
                 <div>
-                  <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4`}>Recent Projects</h2>
+                  <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4`}>
+                    {isClient ? 'Your Projects' : 'Assigned Projects'}
+                  </h2>
                   
-                  <div className="space-y-4">
-                    {userData.recentProjects.map((project) => (
-                      <div key={project.id} className={`${darkMode ? 'border-dark-700 bg-dark-700' : 'border-gray-200'} border rounded-lg overflow-hidden`}>
-                        <div className="px-6 py-4 flex justify-between items-center">
-                          <div>
-                            <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>{project.name}</h3>
-                            <div className="flex items-center text-sm mt-1">
-                              <span className={`flex items-center ${
-                                project.status === 'Completed' 
-                                  ? darkMode ? 'text-green-400' : 'text-green-600'
-                                  : darkMode ? 'text-blue-400' : 'text-blue-600'
-                              }`}>
-                                {project.status === 'Completed' ? (
-                                  <CheckCircle2 size={14} className="mr-1" />
-                                ) : (
-                                  <Clock size={14} className="mr-1" />
-                                )}
-                                {project.status}
-                              </span>
-                              <span className="mx-2">•</span>
-                              <span className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{project.lastActivity}</span>
+                  {loading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
+                    </div>
+                  ) : projects.length > 0 ? (
+                    <div className="space-y-4">
+                      {projects.map((project) => (
+                        <Link
+                          key={project.address}
+                          to={`/project/${project.address}`}
+                          className={`block ${darkMode ? 'border-dark-700 bg-dark-700' : 'border-gray-200 bg-white'} border rounded-lg overflow-hidden hover:shadow-md transition-shadow`}
+                        >
+                          <div className="px-6 py-4">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                                  {project.name}
+                                </h3>
+                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
+                                  {project.description}
+                                </p>
+                                <div className="flex items-center text-sm mt-2">
+                                  <span className={`flex items-center ${
+                                    project.status === 2 
+                                      ? darkMode ? 'text-green-400' : 'text-green-600'
+                                      : darkMode ? 'text-blue-400' : 'text-blue-600'
+                                  }`}>
+                                    {project.status === 2 ? (
+                                      <CheckCircle2 size={14} className="mr-1" />
+                                    ) : (
+                                      <Clock size={14} className="mr-1" />
+                                    )}
+                                    {project.status === 2 ? 'Completed' : 'In Progress'}
+                                  </span>
+                                  <span className="mx-2">•</span>
+                                  <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                                    Contract: {`${project.address.slice(0, 6)}...${project.address.slice(-4)}`}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                  {project.totalValue} AVAX
+                                </p>
+                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  {projectService.formatLastActivity(project.lastActivity)}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                          
-                          <div className="text-right">
-                            <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{project.value}</p>
-                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{project.role}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={`text-center py-8 ${darkMode ? 'bg-dark-700' : 'bg-gray-50'} rounded-lg`}>
+                      <PlusCircle size={48} className={`mx-auto ${darkMode ? 'text-gray-500' : 'text-gray-400'} mb-4`} />
+                      <h3 className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-700'} mb-2`}>No Projects Yet</h3>
+                      <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
+                        {isClient 
+                          ? "You haven't created any projects yet" 
+                          : "You haven't been assigned to any projects yet"}
+                      </p>
+                      {isClient && (
+                        <Link
+                          to="/create-project"
+                          className={`inline-flex items-center px-4 py-2 ${darkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white rounded-md`}
+                        >
+                          <PlusCircle size={16} className="mr-2" />
+                          Create New Project
+                        </Link>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
               
