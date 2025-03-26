@@ -14,6 +14,7 @@
     "@truffle/hdwallet-provider": "^2.1.15",
     "ethers": "^6.13.5",
     "lucide-react": "^0.344.0",
+    "pinata": "^2.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.22.3",
