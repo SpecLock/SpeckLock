@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { pinata } from "../utils/config"
 import { useParams } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
 import { 
@@ -19,6 +20,30 @@ import {
   CheckCheck,
   X
 } from 'lucide-react';
+
+function FormFile() {
+  const [selectedFile, setSelectedFile]: any = useState();
+  const changeHandler = (event: any) => {
+    setSelectedFile(event.target.files[0]);
+  };
+
+  const handleSubmission = async () => {
+    try {
+      const upload = await pinata.upload.public.file(selectedFile)
+      console.log(upload);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  return (
+    <>
+      <label className="form-label"> Choose File</label>
+      <input type="file" onChange={changeHandler} />
+      <button onClick={handleSubmission}>Submit</button>
+    </>
+  );
+}
 
 // Mock project data
 const mockProject = {
@@ -216,6 +241,21 @@ const ProjectDetails: React.FC = () => {
   const [fundAmount, setFundAmount] = useState('');
   const [proofLink, setProofLink] = useState('');
   const [proofDescription, setProofDescription] = useState('');
+
+  // Pinata integration
+  const [selectedFile, setSelectedFile]: any = useState();
+  const changeHandler = (event: any) => {
+    setSelectedFile(event.target.files[0]);
+  };
+
+  const handleSubmission = async () => {
+    try {
+      const upload = await pinata.upload.public.file(selectedFile)
+      console.log(upload);
+    } catch (error) {
+      console.log(error);
+    }
+  };
   
   // In a real app, we would fetch the project data based on the ID
   const project = mockProject;
@@ -616,13 +656,8 @@ const ProjectDetails: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Proof Link
               </label>
-              <input
-                type="text"
-                value={proofLink}
-                onChange={(e) => setProofLink(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="https://github.com/..."
-              />
+              <input type="file" onChange={changeHandler} />
+              <button onClick={handleSubmission}>Submit</button>
               <p className="mt-1 text-xs text-gray-500">
                 Link to GitHub, IPFS, or other proof of completion
               </p>
