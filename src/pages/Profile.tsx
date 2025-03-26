@@ -13,16 +13,11 @@ import {
   ExternalLink
 } from 'lucide-react';
 
-// Mock user data
-const mockUserData = {
-  address: '0x1234...5678',
-  fullAddress: '0x1234567890abcdef1234567890abcdef12345678',
-  joinedDate: 'March 2025',
+const mockProjectData = {
   projectsCompleted: 12,
   projectsInProgress: 3,
   reputation: 4.8,
   totalValue: '32.5 USDC',
-  role: 'Client',
   transactions: 47,
   badges: [
     { name: 'Early Adopter', description: 'Joined during platform beta' },
@@ -57,63 +52,40 @@ const mockUserData = {
   ]
 };
 
-// Mock developer data
-const mockDeveloperData = {
-  address: '0x8765...4321',
-  fullAddress: '0x8765432109abcdef8765432109abcdef87654321',
-  joinedDate: 'January 2025',
-  projectsCompleted: 15,
-  projectsInProgress: 2,
-  reputation: 4.9,
-  totalValue: '45.2 USDC',
-  role: 'Developer',
-  transactions: 63,
-  badges: [
-    { name: 'Expert Developer', description: 'Completed 15+ projects' },
-    { name: 'On-Time Delivery', description: 'Always delivers on schedule' },
-    { name: 'Verified', description: 'Identity verified' }
-  ],
-  recentProjects: [
-    { 
-      id: '1', 
-      name: 'E-commerce Platform', 
-      role: 'Developer', 
-      status: 'In Progress', 
-      lastActivity: '2 hours ago',
-      value: '5.5 USDC'
-    },
-    { 
-      id: '4', 
-      name: 'NFT Marketplace', 
-      role: 'Developer', 
-      status: 'In Progress', 
-      lastActivity: '1 day ago',
-      value: '7.2 USDC'
-    },
-    { 
-      id: '6', 
-      name: 'DAO Governance Tool', 
-      role: 'Developer', 
-      status: 'Completed', 
-      lastActivity: '1 week ago',
-      value: '4.3 USDC'
-    }
-  ]
-};
-
 const Profile: React.FC = () => {
-  const { isConnected, isClient, isDeveloper, connectWallet } = useWallet();
+  const { 
+    isConnected, 
+    isClient, 
+    isDeveloper, 
+    connectWallet, 
+    account,
+    balance,
+    networkName
+  } = useWallet();
   const { darkMode } = useTheme();
   const [activeTab, setActiveTab] = useState('projects');
-  
-  // Select data based on role
-  const userData = isClient ? mockUserData : mockDeveloperData;
-  
+
+  const userData = {
+    address: account ? `${account.slice(0, 6)}...${account.slice(-4)}` : '',
+    fullAddress: account || '',
+    joinedDate: 'March 2025',
+    role: isClient ? 'Client' : 'Developer',
+    balance: `${balance} AVAX`,
+    network: networkName,
+    projectsCompleted: mockProjectData.projectsCompleted,
+    projectsInProgress: mockProjectData.projectsInProgress,
+    reputation: mockProjectData.reputation,
+    totalValue: mockProjectData.totalValue,
+    transactions: mockProjectData.transactions,
+    badges: mockProjectData.badges,
+    recentProjects: mockProjectData.recentProjects
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     alert('Address copied to clipboard!');
   };
-  
+
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center">
@@ -152,6 +124,12 @@ const Profile: React.FC = () => {
                 >
                   <Copy size={14} />
                 </button>
+              </div>
+              <div className="mt-2 text-sm text-indigo-200">
+                Network: {userData.network}
+              </div>
+              <div className="mt-1 text-sm text-indigo-200">
+                Balance: {userData.balance}
               </div>
             </div>
             
