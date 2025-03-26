@@ -328,7 +328,7 @@ const ProjectDetails: React.FC = () => {
           
           <div className="mt-4 md:mt-0 flex items-center">
             <a 
-              href={`https://etherscan.io/address/${project.contract}`} 
+              href={`https://snowtrace.io/address/${project.contract}`} 
               target="_blank" 
               rel="noopener noreferrer"
               className="flex items-center text-indigo-600 hover:text-indigo-800 mr-4"
@@ -578,7 +578,7 @@ const ProjectDetails: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <a 
-                            href={`https://etherscan.io/tx/${tx.hash}`}
+                            href={`https://snowtrace.io/tx/${tx.hash}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-indigo-600 hover:text-indigo-800"

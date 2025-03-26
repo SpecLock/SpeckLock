@@ -195,13 +195,13 @@ const Profile: React.FC = () => {
               
               <div>
                 <a 
-                  href={`https://etherscan.io/address/${userData.fullAddress}`}
+                  href={`https://snowtrace.io/address/${userData.fullAddress}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`flex items-center justify-center text-sm ${darkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-800'}`}
                 >
                   <ExternalLink size={14} className="mr-1" />
-                  View on Etherscan
+                  View on snowtrace
                 </a>
               </div>
             </div>
@@ -309,13 +309,13 @@ const Profile: React.FC = () => {
                       View your complete transaction history on the blockchain
                     </p>
                     <a 
-                      href={`https://etherscan.io/address/${userData.fullAddress}`}
+                      href={`https://snowtrace.io/address/${userData.fullAddress}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`inline-flex items-center px-4 py-2 ${darkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white rounded-md`}
                     >
                       <ExternalLink size={16} className="mr-2" />
-                      View on Etherscan
+                      View on snowtrace
                     </a>
                   </div>
                 </div>
