@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
 import { useTheme } from '../contexts/ThemeContext';
+// Modifica el handleSubmit en CreateProject.tsx
+import { ContractService } from '../services/contractService';
+
 import { 
   Wallet,
   AlertCircle,
@@ -65,22 +68,14 @@ const CreateProject: React.FC = () => {
       setIsSubmitting(true);
       
       try {
-        if (!window.ethereum) {
-          throw new Error("MetaMask is not installed");
-        }
-
-        const provider = new ethers.JsonRpcProvider('https://testnet.snowtrace.io/');
-        const signer = await provider.getSigner();
-        const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, signer);
-
-        const tx = await factory.createProject(
+        const contractService = new ContractService();
+        const projectAddress = await contractService.createProject(
           projectName,
           projectDescription,
           developerAddress
         );
-
-        setTransactionHash(tx.hash);
-        await tx.wait();
+  
+        setTransactionHash(projectAddress);
         setIsSuccess(true);
         
         setTimeout(() => {
