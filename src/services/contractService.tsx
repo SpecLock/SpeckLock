@@ -83,12 +83,33 @@ export class ContractService {
     return this.signer;
   }
 
-  async createProject(name: string, description: string, developerAddress: string): Promise<string> {
+  async createProject(name: string, description: string, developerAddress: string): Promise<{address: string, txHash: string}> {
     try {
       await this.ensureSigner();
       const tx = await this.contract.createProject(name, description, developerAddress);
+      
+      // Get transaction hash immediately after sending
+      console.log('Transaction sent with hash:', tx.hash);
+      
       const receipt = await tx.wait();
-      return receipt.logs[0].address; // Returns the address of the new project
+      
+      // Find the event that contains the new project address
+      const event = receipt.logs.find(
+        (log: any) => log && log.topics && log.topics.length > 0
+      );
+      
+      if (!event || !event.address) {
+        throw new Error('Failed to get new project address from transaction receipt');
+      }
+
+      console.log('Transaction successful!');
+      console.log('Transaction hash:', tx.hash);
+      console.log('New project created at address:', event.address);
+      
+      return {
+        address: event.address,
+        txHash: tx.hash
+      };
     } catch (error) {
       console.error('Error creating project:', error);
       throw error;

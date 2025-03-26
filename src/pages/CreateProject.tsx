@@ -69,23 +69,25 @@ const CreateProject: React.FC = () => {
       
       try {
         const contractService = new ContractService();
-        const projectAddress = await contractService.createProject(
+        const result = await contractService.createProject(
           projectName,
           projectDescription,
           developerAddress
         );
   
-        setTransactionHash(projectAddress);
+        setTransactionHash(result.txHash);
         setIsSuccess(true);
         
+        // Redirigir a Snowtrace después de 2 segundos
         setTimeout(() => {
+          window.open(`https://testnet.snowtrace.io/tx/${result.txHash}`, '_blank');
           navigate('/');
         }, 2000);
       } catch (error: any) {
         console.error('Contract error:', error);
         setErrors(prev => ({
           ...prev,
-          submit: error.message || 'Failed to create project'
+          submit: 'Please check your wallet for transaction details'
         }));
       } finally {
         setIsSubmitting(false);
@@ -130,17 +132,12 @@ const CreateProject: React.FC = () => {
         <CheckCircle size={64} className={`${darkMode ? 'text-green-400' : 'text-green-500'} mb-4`} />
         <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-2`}>Project Created Successfully!</h1>
         <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'} max-w-md mb-6`}>
-          Your project has been created and is now available on the blockchain.
+          Your project has been created. You will be redirected to view the transaction details.
         </p>
         {transactionHash && (
-          <a
-            href={`https://testnet.snowtrace.io/tx/${transactionHash}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`text-sm ${darkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-800'}`}
-          >
-            View transaction on Snowtrace
-          </a>
+          <p className={`text-sm ${darkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
+            Transaction Hash: {transactionHash.slice(0, 6)}...{transactionHash.slice(-4)}
+          </p>
         )}
       </div>
     );
