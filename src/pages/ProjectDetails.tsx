@@ -233,7 +233,14 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
 
 const ProjectDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { isClient, isDeveloper } = useWallet();
+  const { 
+    isClient, 
+    isDeveloper, 
+    account, 
+    balance, 
+    networkName, 
+    isConnected 
+  } = useWallet();
   const [activeTab, setActiveTab] = useState('overview');
   const [fundModalOpen, setFundModalOpen] = useState(false);
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
@@ -282,7 +289,21 @@ const ProjectDetails: React.FC = () => {
     alert(`Marking milestone as complete: ${selectedMilestone.title} with proof: ${proofLink}`);
     setCompleteModalOpen(false);
   };
-  
+
+  // Modificar la sección de participantes para usar datos reales de wallet
+  const projectParticipants = {
+    client: {
+      address: isClient ? account : project.client.address,
+      name: isClient ? `Client (${account?.slice(0, 6)}...${account?.slice(-4)})` : project.client.name,
+      reputation: project.client.reputation // mantener mock por ahora
+    },
+    developer: {
+      address: isDeveloper ? account : project.developer.address,
+      name: isDeveloper ? `Developer (${account?.slice(0, 6)}...${account?.slice(-4)})` : project.developer.name,
+      reputation: project.developer.reputation // mantener mock por ahora
+    }
+  };
+
   return (
     <div className="container mx-auto">
       {/* Project Header */}
@@ -365,24 +386,14 @@ const ProjectDetails: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-800">Client</h2>
           </div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-600">{project.client.name}</span>
-            <span className="text-sm bg-gray-100 px-2 py-1 rounded">{project.client.address}</span>
+            <span className="text-gray-600">{projectParticipants.client.name}</span>
+            <span className="text-sm bg-gray-100 px-2 py-1 rounded">
+              {projectParticipants.client.address || 'Not Connected'}
+            </span>
           </div>
           <div className="flex items-center">
-            <span className="text-sm text-gray-500 mr-2">Reputation:</span>
-            <div className="flex">
-              {[...Array(5)].map((_, i) => (
-                <svg 
-                  key={i} 
-                  className={`w-4 h-4 ${i < Math.floor(project.client.reputation) ? 'text-yellow-400' : 'text-gray-300'}`} 
-                  fill="currentColor" 
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-              ))}
-              <span className="ml-1 text-sm text-gray-500">{project.client.reputation}/5</span>
-            </div>
+            <span className="text-sm text-gray-500 mr-2">Network:</span>
+            <span className="text-sm text-gray-700">{networkName}</span>
           </div>
         </div>
         
@@ -392,24 +403,14 @@ const ProjectDetails: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-800">Developer</h2>
           </div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-600">{project.developer.name}</span>
-            <span className="text-sm bg-gray-100 px-2 py-1 rounded">{project.developer.address}</span>
+            <span className="text-gray-600">{projectParticipants.developer.name}</span>
+            <span className="text-sm bg-gray-100 px-2 py-1 rounded">
+              {projectParticipants.developer.address || 'Not Connected'}
+            </span>
           </div>
           <div className="flex items-center">
-            <span className="text-sm text-gray-500 mr-2">Reputation:</span>
-            <div className="flex">
-              {[...Array(5)].map((_, i) => (
-                <svg 
-                  key={i} 
-                  className={`w-4 h-4 ${i < Math.floor(project.developer.reputation) ? 'text-yellow-400' : 'text-gray-300'}`} 
-                  fill="currentColor" 
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-              ))}
-              <span className="ml-1 text-sm text-gray-500">{project.developer.reputation}/5</span>
-            </div>
+            <span className="text-sm text-gray-500 mr-2">Balance:</span>
+            <span className="text-sm text-gray-700">{balance} AVAX</span>
           </div>
         </div>
       </div>
