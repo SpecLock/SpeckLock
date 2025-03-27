@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { pinata } from "../utils/config"
 import { useParams } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
+import { ProjectContractService, ProjectDetailsV2, Milestone } from '../services/projectContractService';
 import { 
   Clock, 
   CheckCircle2, 
@@ -18,7 +19,8 @@ import {
   PlusCircle,
   ExternalLink,
   CheckCheck,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 
 function FormFile() {
@@ -233,7 +235,14 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
 
 const ProjectDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { isClient, isDeveloper } = useWallet();
+  const { 
+    isClient, 
+    isDeveloper, 
+    account, 
+    balance, 
+    networkName, 
+    isConnected 
+  } = useWallet();
   const [activeTab, setActiveTab] = useState('overview');
   const [fundModalOpen, setFundModalOpen] = useState(false);
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
@@ -241,6 +250,14 @@ const ProjectDetails: React.FC = () => {
   const [fundAmount, setFundAmount] = useState('');
   const [proofLink, setProofLink] = useState('');
   const [proofDescription, setProofDescription] = useState('');
+  
+  // New states for blockchain data
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [projectDetails, setProjectDetails] = useState<ProjectDetailsV2 | null>(null);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [lastActivity, setLastActivity] = useState<string>('');
+  const [projectProgress, setProjectProgress] = useState<number>(0);
 
   // Pinata integration
   const [selectedFile, setSelectedFile]: any = useState();
@@ -252,17 +269,56 @@ const ProjectDetails: React.FC = () => {
     try {
       const upload = await pinata.upload.public.file(selectedFile)
       console.log(upload);
+      setProofLink(upload.ipfs);
     } catch (error) {
       console.log(error);
     }
   };
+
+  // Fetch project data
+  useEffect(() => {
+    const fetchProjectData = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        const service = new ProjectContractService();
+        
+        // Fetch project details
+        const details = await service.getProjectDetailsV2(id);
+        setProjectDetails(details);
+        
+        // Fetch milestones
+        const milestonesData = await service.getAllMilestones(id);
+        setMilestones(milestonesData);
+
+        // Calculate progress
+        const completedMilestones = milestonesData.filter(m => m.completed).length;
+        const progress = milestonesData.length > 0 
+          ? Math.round((completedMilestones / milestonesData.length) * 100)
+          : 0;
+        setProjectProgress(progress);
+        
+        // Set last activity (mock for now as it's not in the contract)
+        setLastActivity('2 hours ago');
+        
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching project data:", err);
+        setError("Failed to load project data. Please check if the contract address is valid.");
+        setLoading(false);
+      }
+    };
+    
+    fetchProjectData();
+  }, [id]);
   
-  // In a real app, we would fetch the project data based on the ID
-  const project = mockProject;
+  // Use either real data or fallback to mock
+  const project = projectDetails || mockProject;
   
   const handleFundMilestone = (milestone: any) => {
     setSelectedMilestone(milestone);
-    setFundAmount(milestone.amount);
+    setFundAmount(milestone.amount || '0');
     setFundModalOpen(true);
   };
   
@@ -271,43 +327,100 @@ const ProjectDetails: React.FC = () => {
     setCompleteModalOpen(true);
   };
   
-  const submitFunding = () => {
-    // In a real app, this would interact with the smart contract
-    alert(`Funding milestone: ${selectedMilestone.title} with ${fundAmount} ETH`);
-    setFundModalOpen(false);
+  const submitFunding = async () => {
+    if (!id || !selectedMilestone) return;
+
+    try {
+      const service = new ProjectContractService();
+      await service.connectWallet();
+      await service.approveMilestone(id, selectedMilestone.id);
+      alert(`Funding milestone: ${selectedMilestone.title} with ${fundAmount} ETH`);
+      setFundModalOpen(false);
+    } catch (error) {
+      console.error("Error funding milestone:", error);
+      alert("Failed to fund milestone. See console for details.");
+    }
   };
   
-  const submitCompletion = () => {
-    // In a real app, this would interact with the smart contract
-    alert(`Marking milestone as complete: ${selectedMilestone.title} with proof: ${proofLink}`);
-    setCompleteModalOpen(false);
+  const submitCompletion = async () => {
+    if (!id || !selectedMilestone) return;
+    
+    try {
+      const service = new ProjectContractService();
+      await service.connectWallet();
+      await service.completeMilestone(id, selectedMilestone.id, proofLink);
+      alert(`Marking milestone as complete: ${selectedMilestone.title} with proof: ${proofLink}`);
+      setCompleteModalOpen(false);
+    } catch (error) {
+      console.error("Error completing milestone:", error);
+      alert("Failed to complete milestone. See console for details.");
+    }
   };
-  
+
+  const projectParticipants = projectDetails ? {
+    client: {
+      address: isClient ? account : projectDetails.clientAddress,
+      name: isClient ? `Client (${account?.slice(0, 6)}...${account?.slice(-4)})` : projectDetails.formattedClientAddress,
+      reputation: 4.8 // Mock data as it's not in the contract
+    },
+    developer: {
+      address: isDeveloper ? account : projectDetails.developerAddress,
+      name: isDeveloper ? `Developer (${account?.slice(0, 6)}...${account?.slice(-4)})` : projectDetails.formattedDeveloperAddress,
+      reputation: 4.9 // Mock data as it's not in the contract
+    }
+  } : {
+    client: {
+      address: isClient ? account : project.client.address,
+      name: isClient ? `Client (${account?.slice(0, 6)}...${account?.slice(-4)})` : project.client.name,
+      reputation: project.client.reputation
+    },
+    developer: {
+      address: isDeveloper ? account : project.developer.address,
+      name: isDeveloper ? `Developer (${account?.slice(0, 6)}...${account?.slice(-4)})` : project.developer.name,
+      reputation: project.developer.reputation
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto flex flex-col items-center justify-center min-h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-indigo-600 mb-4" />
+        <p className="text-gray-600">Loading project details...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto flex flex-col items-center justify-center min-h-screen">
+        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+        <p className="text-red-600 mb-2">Error loading project</p>
+        <p className="text-gray-600">{error}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto">
       {/* Project Header */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">{project.name}</h1>
+            <h1 className="text-2xl font-bold text-gray-800">{projectDetails?.projectName || project.name}</h1>
             <div className="flex items-center mt-1">
-              <span className={`text-xs px-2 py-1 rounded-full mr-2 ${
-                project.status === 'active' ? 'bg-green-100 text-green-800' :
-                project.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                'bg-yellow-100 text-yellow-800'
-              }`}>
-                {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
+              <span className={`text-xs px-2 py-1 rounded-full mr-2 bg-green-100 text-green-800`}>
+                Active
               </span>
               <span className="text-sm text-gray-500 flex items-center">
                 <Calendar size={14} className="mr-1" />
-                Created on {project.createdAt}
+                Created on {new Date().toISOString().split('T')[0]} {/* Placeholder date */}
               </span>
             </div>
           </div>
           
           <div className="mt-4 md:mt-0 flex items-center">
             <a 
-              href={`https://etherscan.io/address/${project.contract}`} 
+              href={`https://subnets-test.avax.network/c-chain/address/${id}`} 
               target="_blank" 
               rel="noopener noreferrer"
               className="flex items-center text-indigo-600 hover:text-indigo-800 mr-4"
@@ -319,7 +432,10 @@ const ProjectDetails: React.FC = () => {
             {isClient && (
               <button 
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center transition"
-                onClick={() => handleFundMilestone(project.milestones.find(m => m.status === 'in-progress' || m.status === 'pending'))}
+                onClick={() => {
+                  const nextMilestone = milestones.find(m => !m.completed);
+                  if (nextMilestone) handleFundMilestone(nextMilestone);
+                }}
               >
                 <DollarSign size={16} className="mr-1" />
                 Fund Next Milestone
@@ -328,31 +444,31 @@ const ProjectDetails: React.FC = () => {
           </div>
         </div>
         
-        <p className="text-gray-600 mb-4">{project.description}</p>
+        <p className="text-gray-600 mb-4">{projectDetails?.projectDescription || project.description}</p>
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div className="bg-gray-50 p-3 rounded-md">
             <p className="text-xs text-gray-500 mb-1">Budget</p>
-            <p className="font-semibold">{project.budget}</p>
+            <p className="font-semibold">{projectDetails?.totalBudget || project.budget}</p>
           </div>
           <div className="bg-gray-50 p-3 rounded-md">
             <p className="text-xs text-gray-500 mb-1">Funded</p>
-            <p className="font-semibold">{project.funded}</p>
+            <p className="font-semibold">{projectDetails?.totalBudget || project.funded}</p>
           </div>
           <div className="bg-gray-50 p-3 rounded-md">
             <p className="text-xs text-gray-500 mb-1">Progress</p>
-            <p className="font-semibold">{project.progress}%</p>
+            <p className="font-semibold">{projectProgress}%</p>
           </div>
           <div className="bg-gray-50 p-3 rounded-md">
             <p className="text-xs text-gray-500 mb-1">Last Activity</p>
-            <p className="font-semibold">{project.lastActivity}</p>
+            <p className="font-semibold">{lastActivity}</p>
           </div>
         </div>
         
         <div className="w-full bg-gray-200 rounded-full h-2.5">
           <div 
             className="bg-indigo-600 h-2.5 rounded-full" 
-            style={{ width: `${project.progress}%` }}
+            style={{ width: `${projectProgress}%` }}
           ></div>
         </div>
       </div>
@@ -365,24 +481,14 @@ const ProjectDetails: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-800">Client</h2>
           </div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-600">{project.client.name}</span>
-            <span className="text-sm bg-gray-100 px-2 py-1 rounded">{project.client.address}</span>
+            <span className="text-gray-600">{projectParticipants.client.name}</span>
+            <span className="text-sm bg-gray-100 px-2 py-1 rounded">
+              {projectParticipants.client.address || 'Not Connected'}
+            </span>
           </div>
           <div className="flex items-center">
-            <span className="text-sm text-gray-500 mr-2">Reputation:</span>
-            <div className="flex">
-              {[...Array(5)].map((_, i) => (
-                <svg 
-                  key={i} 
-                  className={`w-4 h-4 ${i < Math.floor(project.client.reputation) ? 'text-yellow-400' : 'text-gray-300'}`} 
-                  fill="currentColor" 
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-              ))}
-              <span className="ml-1 text-sm text-gray-500">{project.client.reputation}/5</span>
-            </div>
+            <span className="text-sm text-gray-500 mr-2">Network:</span>
+            <span className="text-sm text-gray-700">{networkName}</span>
           </div>
         </div>
         
@@ -392,24 +498,14 @@ const ProjectDetails: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-800">Developer</h2>
           </div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-600">{project.developer.name}</span>
-            <span className="text-sm bg-gray-100 px-2 py-1 rounded">{project.developer.address}</span>
+            <span className="text-gray-600">{projectParticipants.developer.name}</span>
+            <span className="text-sm bg-gray-100 px-2 py-1 rounded">
+              {projectParticipants.developer.address || 'Not Connected'}
+            </span>
           </div>
           <div className="flex items-center">
-            <span className="text-sm text-gray-500 mr-2">Reputation:</span>
-            <div className="flex">
-              {[...Array(5)].map((_, i) => (
-                <svg 
-                  key={i} 
-                  className={`w-4 h-4 ${i < Math.floor(project.developer.reputation) ? 'text-yellow-400' : 'text-gray-300'}`} 
-                  fill="currentColor" 
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-              ))}
-              <span className="ml-1 text-sm text-gray-500">{project.developer.reputation}/5</span>
-            </div>
+            <span className="text-sm text-gray-500 mr-2">Balance:</span>
+            <span className="text-sm text-gray-700">{balance} AVAX</span>
           </div>
         </div>
       </div>
@@ -455,12 +551,10 @@ const ProjectDetails: React.FC = () => {
               </div>
               
               <div className="space-y-6">
-                {project.milestones.map((milestone, index) => (
-                  <div key={milestone.id} className="border rounded-lg overflow-hidden">
+                {milestones.length > 0 ? milestones.map((milestone, index) => (
+                  <div key={index} className="border rounded-lg overflow-hidden">
                     <div className={`px-6 py-4 flex justify-between items-center ${
-                      milestone.status === 'completed' ? 'bg-green-50' :
-                      milestone.status === 'in-progress' ? 'bg-blue-50' :
-                      'bg-gray-50'
+                      milestone.completed ? 'bg-green-50' : 'bg-blue-50'
                     }`}>
                       <div className="flex items-center">
                         <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white text-indigo-600 font-semibold mr-3 border border-indigo-200">
@@ -470,47 +564,41 @@ const ProjectDetails: React.FC = () => {
                           <h3 className="font-medium text-gray-800">{milestone.title}</h3>
                           <div className="flex items-center text-sm">
                             <span className={`flex items-center ${
-                              milestone.status === 'completed' ? 'text-green-600' :
-                              milestone.status === 'in-progress' ? 'text-blue-600' :
-                              'text-gray-500'
+                              milestone.completed ? 'text-green-600' : 'text-blue-600'
                             }`}>
-                              {milestone.status === 'completed' ? (
+                              {milestone.completed ? (
                                 <CheckCircle2 size={14} className="mr-1" />
-                              ) : milestone.status === 'in-progress' ? (
-                                <Clock size={14} className="mr-1" />
                               ) : (
-                                <AlertCircle size={14} className="mr-1" />
+                                <Clock size={14} className="mr-1" />
                               )}
-                              {milestone.status === 'completed' ? 'Completed' :
-                               milestone.status === 'in-progress' ? 'In Progress' :
-                               'Pending'}
+                              {milestone.completed ? 'Completed' : 'In Progress'}
                             </span>
                             <span className="mx-2">•</span>
-                            <span className="text-gray-500">{milestone.amount}</span>
+                            <span className="text-gray-500">{milestone.amount} ETH</span>
                             <span className="mx-2">•</span>
-                            <span className="text-gray-500">Due: {milestone.dueDate}</span>
+                            <span className="text-gray-500">Due: {new Date(milestone.tentativeDate * 1000).toLocaleDateString()}</span>
                           </div>
                         </div>
                       </div>
                       
                       <div>
-                        {isClient && milestone.status === 'pending' && (
+                        {isClient && !milestone.completed && (
                           <button 
-                            onClick={() => handleFundMilestone(milestone)}
+                            onClick={() => handleFundMilestone({...milestone, id: index})}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-sm"
                           >
                             Fund
                           </button>
                         )}
-                        {isDeveloper && milestone.status === 'in-progress' && (
+                        {isDeveloper && !milestone.completed && (
                           <button 
-                            onClick={() => handleCompleteMilestone(milestone)}
+                            onClick={() => handleCompleteMilestone({...milestone, id: index})}
                             className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
                           >
                             Complete
                           </button>
                         )}
-                        {milestone.status === 'completed' && (
+                        {milestone.completed && (
                           <span className="flex items-center text-green-600 text-sm">
                             <CheckCheck size={16} className="mr-1" />
                             Verified
@@ -521,25 +609,13 @@ const ProjectDetails: React.FC = () => {
                     
                     <div className="px-6 py-4">
                       <p className="text-gray-600 text-sm mb-4">{milestone.description}</p>
-                      
-                      {milestone.status === 'completed' && (
-                        <div className="bg-gray-50 p-4 rounded-md">
-                          <h4 className="text-sm font-medium text-gray-700 mb-2">Completion Proof</h4>
-                          <p className="text-sm text-gray-600 mb-2">{milestone.proofDescription}</p>
-                          <a 
-                            href={milestone.proofLink} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center"
-                          >
-                            <LinkIcon size={14} className="mr-1" />
-                            View Proof
-                          </a>
-                        </div>
-                      )}
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center py-10">
+                    <p className="text-gray-500">No milestones found for this project</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -548,6 +624,7 @@ const ProjectDetails: React.FC = () => {
             <div>
               <h2 className="text-lg font-semibold text-gray-800 mb-4">Transaction History</h2>
               <div className="overflow-x-auto">
+                {/* Keep mock transaction data for now */}
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead>
                     <tr>
@@ -577,7 +654,7 @@ const ProjectDetails: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <a 
-                            href={`https://etherscan.io/tx/${tx.hash}`}
+                            href={`https://snowtrace.io/tx/${tx.hash}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-indigo-600 hover:text-indigo-800"
@@ -657,9 +734,19 @@ const ProjectDetails: React.FC = () => {
                 Proof Link
               </label>
               <input type="file" onChange={changeHandler} />
-              <button onClick={handleSubmission}>Submit</button>
+              <button 
+                onClick={handleSubmission}
+                className="mt-2 px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+              >
+                Upload to IPFS
+              </button>
+              {proofLink && (
+                <div className="mt-2 text-green-600 text-sm">
+                  File uploaded to IPFS: {proofLink}
+                </div>
+              )}
               <p className="mt-1 text-xs text-gray-500">
-                Link to GitHub, IPFS, or other proof of completion
+                Upload proof of completion to IPFS
               </p>
             </div>
             
