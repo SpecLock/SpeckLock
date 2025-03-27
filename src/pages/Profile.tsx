@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWallet } from '../contexts/WalletContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { ContractService } from '../services/contractService';
+import { ProjectContractService, ProjectDetails } from '../services/projectContractService';
 import { 
   User, 
   Wallet, 
@@ -10,19 +12,16 @@ import {
   CheckCircle2, 
   AlertCircle,
   Copy,
-  ExternalLink
+  ExternalLink,
+  PlusCircle
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-// Mock user data
-const mockUserData = {
-  address: '0x1234...5678',
-  fullAddress: '0x1234567890abcdef1234567890abcdef12345678',
-  joinedDate: 'March 2025',
+const mockProjectData = {
   projectsCompleted: 12,
   projectsInProgress: 3,
   reputation: 4.8,
   totalValue: '32.5 USDC',
-  role: 'Client',
   transactions: 47,
   badges: [
     { name: 'Early Adopter', description: 'Joined during platform beta' },
@@ -57,63 +56,171 @@ const mockUserData = {
   ]
 };
 
-// Mock developer data
-const mockDeveloperData = {
-  address: '0x8765...4321',
-  fullAddress: '0x8765432109abcdef8765432109abcdef87654321',
-  joinedDate: 'January 2025',
-  projectsCompleted: 15,
-  projectsInProgress: 2,
-  reputation: 4.9,
-  totalValue: '45.2 USDC',
-  role: 'Developer',
-  transactions: 63,
-  badges: [
-    { name: 'Expert Developer', description: 'Completed 15+ projects' },
-    { name: 'On-Time Delivery', description: 'Always delivers on schedule' },
-    { name: 'Verified', description: 'Identity verified' }
-  ],
-  recentProjects: [
-    { 
-      id: '1', 
-      name: 'E-commerce Platform', 
-      role: 'Developer', 
-      status: 'In Progress', 
-      lastActivity: '2 hours ago',
-      value: '5.5 USDC'
-    },
-    { 
-      id: '4', 
-      name: 'NFT Marketplace', 
-      role: 'Developer', 
-      status: 'In Progress', 
-      lastActivity: '1 day ago',
-      value: '7.2 USDC'
-    },
-    { 
-      id: '6', 
-      name: 'DAO Governance Tool', 
-      role: 'Developer', 
-      status: 'Completed', 
-      lastActivity: '1 week ago',
-      value: '4.3 USDC'
-    }
-  ]
-};
-
 const Profile: React.FC = () => {
-  const { isConnected, isClient, isDeveloper } = useWallet();
+  const { 
+    isConnected, 
+    isClient, 
+    isDeveloper, 
+    connectWallet, 
+    account,
+    balance,
+    networkName
+  } = useWallet();
   const { darkMode } = useTheme();
   const [activeTab, setActiveTab] = useState('projects');
+  const [projects, setProjects] = useState<ProjectDetails[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [rawProjects, setRawProjects] = useState<{
+    ownerProjects: string[];
+    devProjects: string[];
+  }>({ ownerProjects: [], devProjects: [] });
+  const [testResults, setTestResults] = useState<{
+    ownerProjects: string[] | null;
+    devProjects: string[] | null;
+    error: string | null;
+  }>({ ownerProjects: null, devProjects: null, error: null });
   
-  // Select data based on role
-  const userData = isClient ? mockUserData : mockDeveloperData;
-  
+  const contractService = new ContractService();
+  const projectService = new ProjectContractService();
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (account && isConnected) {
+        try {
+          console.log('%c Fetching Projects', 'background: #222; color: #bada55; font-size: 16px;');
+          console.log('%c Account:', 'color: #00f', account);
+          
+          // Get owner projects
+          console.log('%c Calling getProjectsByOwner...', 'color: #0a0');
+          const ownerProjects = await contractService.getProjectsByOwner(account);
+          console.log('%c Owner Projects:', 'color: #0a0', ownerProjects);
+          
+          // Get developer projects
+          console.log('%c Calling getProjectsByDeveloper...', 'color: #0a0');
+          const devProjects = await contractService.getProjectsByDeveloper(account);
+          console.log('%c Developer Projects:', 'color: #0a0', devProjects);
+          
+          // Store raw project addresses
+          setRawProjects({
+            ownerProjects,
+            devProjects
+          });
+        } catch (error) {
+          console.error('%c Error fetching projects:', 'color: #f00', error);
+        }
+      }
+    };
+
+    fetchProjects();
+  }, [account, isConnected]);
+
+  useEffect(() => {
+    const loadProjects = async () => {
+      if (isConnected && account) {
+        setLoading(true);
+        try {
+          // Combine owner and developer projects without duplicates
+          let projectAddresses: string[] = [];
+          
+          // If client, focus on owner projects but include any developer projects too
+          if (isClient) {
+            projectAddresses = [...rawProjects.ownerProjects];
+            // Also include any developer projects not already in the list
+            rawProjects.devProjects.forEach(addr => {
+              if (!projectAddresses.includes(addr)) {
+                projectAddresses.push(addr);
+              }
+            });
+          } else {
+            // If developer, focus on dev projects but include any owner projects too
+            projectAddresses = [...rawProjects.devProjects];
+            // Also include any owner projects not already in the list
+            rawProjects.ownerProjects.forEach(addr => {
+              if (!projectAddresses.includes(addr)) {
+                projectAddresses.push(addr);
+              }
+            });
+          }
+          
+          if (projectAddresses.length > 0) {
+            const projectDetails = await Promise.all(
+              projectAddresses.map(address => projectService.getProjectDetails(address))
+            );
+            
+            setProjects(projectDetails);
+          } else {
+            setProjects([]);
+          }
+        } catch (error) {
+          console.error('Error loading project details:', error);
+          setProjects([]);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProjects();
+  }, [isConnected, account, isClient, isDeveloper, rawProjects]);
+
+  useEffect(() => {
+    const testContractService = async () => {
+      if (account && isConnected) {
+        try {
+          console.log('%c Testing Contract Service Functions', 'background: #222; color: #bada55; font-size: 16px;');
+          console.log('%c Account:', 'color: #00f', account);
+          
+          // Test owner projects
+          console.log('%c Calling getProjectsByOwner...', 'color: #0a0');
+          const ownerProjects = await contractService.getProjectsByOwner(account);
+          console.log('%c Owner Projects:', 'color: #0a0', ownerProjects);
+          
+          // Test developer projects
+          console.log('%c Calling getProjectsByDeveloper...', 'color: #0a0');
+          const devProjects = await contractService.getProjectsByDeveloper(account);
+          console.log('%c Developer Projects:', 'color: #0a0', devProjects);
+          
+          // Store results in state to display in UI
+          setTestResults({ 
+            ownerProjects, 
+            devProjects, 
+            error: null 
+          });
+        } catch (error) {
+          console.error('%c Error testing contract functions:', 'color: #f00', error);
+          setTestResults({ 
+            ownerProjects: null, 
+            devProjects: null, 
+            error: error instanceof Error ? error.message : String(error) 
+          });
+        }
+      }
+    };
+
+    testContractService();
+  }, [account, isConnected]);
+
+  const userData = {
+    address: account ? `${account.slice(0, 6)}...${account.slice(-4)}` : '',
+    fullAddress: account || '',
+    joinedDate: 'March 2025',
+    role: isClient ? 'Client' : 'Developer',
+    balance: `${balance} AVAX`,
+    network: networkName,
+    projectsCompleted: mockProjectData.projectsCompleted,
+    projectsInProgress: mockProjectData.projectsInProgress,
+    reputation: mockProjectData.reputation,
+    totalValue: mockProjectData.totalValue,
+    transactions: mockProjectData.transactions,
+    badges: mockProjectData.badges,
+    recentProjects: mockProjectData.recentProjects
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     alert('Address copied to clipboard!');
   };
-  
+
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center">
@@ -123,6 +230,7 @@ const Profile: React.FC = () => {
           Please connect your wallet to view your profile.
         </p>
         <button 
+          onClick={connectWallet}
           className={`flex items-center space-x-2 ${darkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white px-6 py-3 rounded-lg transition`}
         >
           <Wallet size={20} />
@@ -134,6 +242,7 @@ const Profile: React.FC = () => {
   
   return (
     <div className="container mx-auto">
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Profile Card */}
         <div className="md:col-span-1">
@@ -151,6 +260,12 @@ const Profile: React.FC = () => {
                 >
                   <Copy size={14} />
                 </button>
+              </div>
+              <div className="mt-2 text-sm text-indigo-200">
+                Network: {userData.network}
+              </div>
+              <div className="mt-1 text-sm text-indigo-200">
+                Balance: {userData.balance}
               </div>
             </div>
             
@@ -216,13 +331,13 @@ const Profile: React.FC = () => {
               
               <div>
                 <a 
-                  href={`https://etherscan.io/address/${userData.fullAddress}`}
+                  href={`https://snowtrace.io/address/${userData.fullAddress}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`flex items-center justify-center text-sm ${darkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-800'}`}
                 >
                   <ExternalLink size={14} className="mr-1" />
-                  View on Etherscan
+                  View on snowtrace
                 </a>
               </div>
             </div>
@@ -282,40 +397,141 @@ const Profile: React.FC = () => {
             <div className="p-6">
               {activeTab === 'projects' && (
                 <div>
-                  <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4`}>Recent Projects</h2>
+                  <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4`}>
+                    {isClient ? 'Your Projects' : 'Assigned Projects'}
+                  </h2>
                   
-                  <div className="space-y-4">
-                    {userData.recentProjects.map((project) => (
-                      <div key={project.id} className={`${darkMode ? 'border-dark-700 bg-dark-700' : 'border-gray-200'} border rounded-lg overflow-hidden`}>
-                        <div className="px-6 py-4 flex justify-between items-center">
-                          <div>
-                            <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>{project.name}</h3>
-                            <div className="flex items-center text-sm mt-1">
-                              <span className={`flex items-center ${
-                                project.status === 'Completed' 
-                                  ? darkMode ? 'text-green-400' : 'text-green-600'
-                                  : darkMode ? 'text-blue-400' : 'text-blue-600'
-                              }`}>
-                                {project.status === 'Completed' ? (
-                                  <CheckCircle2 size={14} className="mr-1" />
-                                ) : (
-                                  <Clock size={14} className="mr-1" />
-                                )}
-                                {project.status}
-                              </span>
-                              <span className="mx-2">•</span>
-                              <span className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{project.lastActivity}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="text-right">
-                            <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{project.value}</p>
-                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{project.role}</p>
+                  {loading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
+                    </div>
+                  ) : (isClient && testResults.ownerProjects && testResults.ownerProjects.length > 0) || 
+                       (!isClient && testResults.devProjects && testResults.devProjects.length > 0) ? (
+                    <>
+                      {/* Show Owner Projects only if Client */}
+                      {isClient && testResults.ownerProjects && testResults.ownerProjects.length > 0 && (
+                        <div className="mb-3">
+
+                          <div className={`p-3 rounded ${darkMode ? 'bg-dark-700' : 'bg-gray-50'}`}>
+                            {testResults.ownerProjects.map((address, index) => (
+                              <div key={index} className="mb-4 p-4 rounded-lg border border-gray-300 dark:border-dark-600 shadow-sm hover:shadow-lg transition-shadow bg-white dark:bg-gray-800">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-medium">Project:&nbsp;</span>
+                                    <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                                      {address.slice(0, 5)}...{address.slice(-5)}
+                                    </span>
+                                    <button
+                                      onClick={() => copyToClipboard(address)}
+                                      className="flex items-center text-gray-500 hover:text-gray-700"
+                                    >
+                                      <Copy size={14} />
+                                    </button>
+                                  </div>
+                                  <div className="space-x-2">
+                                    <a
+                                      href={`https://testnet.snowtrace.io/address/${address}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`inline-flex items-center text-sm ${
+                                        darkMode
+                                          ? 'text-indigo-400 hover:text-indigo-300'
+                                          : 'text-indigo-600 hover:text-indigo-700'
+                                      }`}
+                                    >
+                                      <ExternalLink size={12} className="mr-1" />
+                                      View on Snowtrace
+                                    </a>
+                                    <Link
+                                      to={`/project/${address}`}
+                                      className={`inline-flex items-center text-sm ${
+                                        darkMode
+                                          ? 'text-indigo-400 hover:text-indigo-300'
+                                          : 'text-indigo-600 hover:text-indigo-700'
+                                      }`}
+                                    >
+                                      View Details →
+                                    </Link>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      )}
+                      
+                      {/* Show Developer Projects only if Developer */}
+                      {!isClient && testResults.devProjects && testResults.devProjects.length > 0 && (
+                        <div>
+
+                          <div className={`p-3 rounded ${darkMode ? 'bg-dark-700' : 'bg-gray-50'}`}>
+                            {testResults.devProjects.map((address, index) => (
+                              <div key={index} className="mb-4 p-4 rounded-lg border border-gray-300 dark:border-dark-600 shadow-sm hover:shadow-lg transition-shadow bg-white dark:bg-gray-800">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-medium">Project:&nbsp;</span>
+                                    <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                                      {address.slice(0, 5)}...{address.slice(-5)}
+                                    </span>
+                                    <button
+                                      onClick={() => copyToClipboard(address)}
+                                      className="flex items-center text-gray-500 hover:text-gray-700"
+                                    >
+                                      <Copy size={14} />
+                                    </button>
+                                  </div>
+                                  <div className="space-x-2">
+                                    <a
+                                      href={`https://testnet.snowtrace.io/address/${address}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`inline-flex items-center text-sm ${
+                                        darkMode
+                                          ? 'text-indigo-400 hover:text-indigo-300'
+                                          : 'text-indigo-600 hover:text-indigo-700'
+                                      }`}
+                                    >
+                                      <ExternalLink size={12} className="mr-1" />
+                                      View on Snowtrace
+                                    </a>
+                                    <Link
+                                      to={`/project/${address}`}
+                                      className={`inline-flex items-center text-sm ${
+                                        darkMode
+                                          ? 'text-indigo-400 hover:text-indigo-300'
+                                          : 'text-indigo-600 hover:text-indigo-700'
+                                      }`}
+                                    >
+                                      View Details →
+                                    </Link>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className={`text-center py-8 ${darkMode ? 'bg-dark-700' : 'bg-gray-50'} rounded-lg`}>
+                      <PlusCircle size={48} className={`mx-auto ${darkMode ? 'text-gray-500' : 'text-gray-400'} mb-4`} />
+                      <h3 className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-700'} mb-2`}>No Projects Yet</h3>
+                      <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
+                        {isClient 
+                          ? "You haven't created any projects yet" 
+                          : "You haven't been assigned to any projects yet"}
+                      </p>
+                      {isClient && (
+                        <Link
+                          to="/create-project"
+                          className={`inline-flex items-center px-4 py-2 ${darkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white rounded-md`}
+                        >
+                          <PlusCircle size={16} className="mr-2" />
+                          Create New Project
+                        </Link>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -330,13 +546,13 @@ const Profile: React.FC = () => {
                       View your complete transaction history on the blockchain
                     </p>
                     <a 
-                      href={`https://etherscan.io/address/${userData.fullAddress}`}
+                      href={`https://snowtrace.io/address/${userData.fullAddress}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`inline-flex items-center px-4 py-2 ${darkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white rounded-md`}
                     >
                       <ExternalLink size={16} className="mr-2" />
-                      View on Etherscan
+                      View on snowtrace
                     </a>
                   </div>
                 </div>

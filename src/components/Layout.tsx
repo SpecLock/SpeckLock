@@ -1,7 +1,9 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { ContractService } from '../services/contractService';
+import { ProjectContractService, ProjectDetails } from '../services/projectContractService';
 import { 
   Home, 
   PlusCircle, 
@@ -24,7 +26,41 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { account, balance, isConnected, isClient, isDeveloper, connectWallet, disconnectWallet, switchRole, networkName } = useWallet();
   const { darkMode, toggleDarkMode } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [projects, setProjects] = useState<ProjectDetails[]>([]);
+  const [loading, setLoading] = useState(false);
   const location = useLocation();
+  const contractService = new ContractService();
+  const projectService = new ProjectContractService();
+
+  useEffect(() => {
+    const loadProjects = async () => {
+      if (isConnected && account) {
+        setLoading(true);
+        try {
+          let projectAddresses: string[];
+          if (isClient) {
+            projectAddresses = await contractService.getProjectsByOwner(account);
+          } else {
+            projectAddresses = await contractService.getProjectsByDeveloper(account);
+
+          }
+          
+          const projectDetails = await Promise.all(
+            projectAddresses.map(address => projectService.getProjectDetails(address))
+          );
+          
+          console.log('Project addresses:', projectAddresses);
+          setProjects(projectDetails);
+        } catch (error) {
+          console.error('Error loading projects:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProjects();
+  }, [isConnected, account, isClient, isDeveloper]);
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -199,6 +235,39 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <span className="font-medium">{link.label}</span>
               </Link>
             ))}
+
+            {/* Projects List */}
+            {isConnected && (
+              <div className="mt-6">
+                <h3 className={`px-4 py-2 text-sm font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {isClient ? 'Your Projects' : 'Assigned Projects'}
+                </h3>
+                {loading ? (
+                  <div className="flex justify-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {projects.map((project) => (
+                      <Link
+                        key={project.address}
+                        to={`/project/${project.address}`}
+                        className={`flex flex-col px-4 py-2 text-sm rounded-md transition ${
+                          darkMode ? 'hover:bg-dark-700' : 'hover:bg-gray-100'
+                        }`}
+                      >
+                        <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                          {project.name}
+                        </span>
+                        <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                          {`${project.address.slice(0, 6)}...${project.address.slice(-4)}`}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
         </aside>
         
