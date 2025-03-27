@@ -411,19 +411,31 @@ const Profile: React.FC = () => {
                       {/* Show Owner Projects only if Client */}
                       {isClient && testResults.ownerProjects && testResults.ownerProjects.length > 0 && (
                         <div className="mb-3">
+
                           <div className={`p-3 rounded ${darkMode ? 'bg-dark-700' : 'bg-gray-50'}`}>
-                            <ul className="list-disc pl-5">
-                              {testResults.ownerProjects.map((address, index) => (
-                                <li key={index} className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
-                                  <div className="flex items-center gap-2">
-                                    <span>{address}</span>
+                            {testResults.ownerProjects.map((address, index) => (
+                              <div key={index} className="mb-4 p-4 rounded-lg border border-gray-300 dark:border-dark-600 shadow-sm hover:shadow-lg transition-shadow bg-white dark:bg-gray-800">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-medium">Project:&nbsp;</span>
+                                    <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                                      {address.slice(0, 5)}...{address.slice(-5)}
+                                    </span>
+                                    <button
+                                      onClick={() => copyToClipboard(address)}
+                                      className="flex items-center text-gray-500 hover:text-gray-700"
+                                    >
+                                      <Copy size={14} />
+                                    </button>
+                                  </div>
+                                  <div className="space-x-2">
                                     <a
                                       href={`https://testnet.snowtrace.io/address/${address}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className={`inline-flex items-center text-sm ${
-                                        darkMode 
-                                          ? 'text-indigo-400 hover:text-indigo-300' 
+                                        darkMode
+                                          ? 'text-indigo-400 hover:text-indigo-300'
                                           : 'text-indigo-600 hover:text-indigo-700'
                                       }`}
                                     >
@@ -433,17 +445,17 @@ const Profile: React.FC = () => {
                                     <Link
                                       to={`/project/${address}`}
                                       className={`inline-flex items-center text-sm ${
-                                        darkMode 
-                                          ? 'text-indigo-400 hover:text-indigo-300' 
+                                        darkMode
+                                          ? 'text-indigo-400 hover:text-indigo-300'
                                           : 'text-indigo-600 hover:text-indigo-700'
                                       }`}
                                     >
                                       View Details →
                                     </Link>
                                   </div>
-                                </li>
-                              ))}
-                            </ul>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}
@@ -451,19 +463,31 @@ const Profile: React.FC = () => {
                       {/* Show Developer Projects only if Developer */}
                       {!isClient && testResults.devProjects && testResults.devProjects.length > 0 && (
                         <div>
+
                           <div className={`p-3 rounded ${darkMode ? 'bg-dark-700' : 'bg-gray-50'}`}>
-                            <ul className="list-disc pl-5">
-                              {testResults.devProjects.map((address, index) => (
-                                <li key={index} className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
-                                  <div className="flex items-center gap-2">
-                                    <span>{address}</span>
+                            {testResults.devProjects.map((address, index) => (
+                              <div key={index} className="mb-4 p-4 rounded-lg border border-gray-300 dark:border-dark-600 shadow-sm hover:shadow-lg transition-shadow bg-white dark:bg-gray-800">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-medium">Project:&nbsp;</span>
+                                    <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                                      {address.slice(0, 5)}...{address.slice(-5)}
+                                    </span>
+                                    <button
+                                      onClick={() => copyToClipboard(address)}
+                                      className="flex items-center text-gray-500 hover:text-gray-700"
+                                    >
+                                      <Copy size={14} />
+                                    </button>
+                                  </div>
+                                  <div className="space-x-2">
                                     <a
                                       href={`https://testnet.snowtrace.io/address/${address}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className={`inline-flex items-center text-sm ${
-                                        darkMode 
-                                          ? 'text-indigo-400 hover:text-indigo-300' 
+                                        darkMode
+                                          ? 'text-indigo-400 hover:text-indigo-300'
                                           : 'text-indigo-600 hover:text-indigo-700'
                                       }`}
                                     >
@@ -473,17 +497,17 @@ const Profile: React.FC = () => {
                                     <Link
                                       to={`/project/${address}`}
                                       className={`inline-flex items-center text-sm ${
-                                        darkMode 
-                                          ? 'text-indigo-400 hover:text-indigo-300' 
+                                        darkMode
+                                          ? 'text-indigo-400 hover:text-indigo-300'
                                           : 'text-indigo-600 hover:text-indigo-700'
                                       }`}
                                     >
                                       View Details →
                                     </Link>
                                   </div>
-                                </li>
-                              ))}
-                            </ul>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}
