@@ -405,15 +405,12 @@ const Profile: React.FC = () => {
                     <div className="text-center py-8">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
                     </div>
-                  ) : (testResults.ownerProjects && testResults.ownerProjects.length > 0) || 
-                       (testResults.devProjects && testResults.devProjects.length > 0) ? (
+                  ) : (isClient && testResults.ownerProjects && testResults.ownerProjects.length > 0) || 
+                       (!isClient && testResults.devProjects && testResults.devProjects.length > 0) ? (
                     <>
-                      {/* Owner Projects Section - Styled exactly like the test results */}
-                      {testResults.ownerProjects && testResults.ownerProjects.length > 0 && (
+                      {/* Show Owner Projects only if Client */}
+                      {isClient && testResults.ownerProjects && testResults.ownerProjects.length > 0 && (
                         <div className="mb-3">
-                          <h3 className={`text-md font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
-                            Projects by Owner:
-                          </h3>
                           <div className={`p-3 rounded ${darkMode ? 'bg-dark-700' : 'bg-gray-50'}`}>
                             <ul className="list-disc pl-5">
                               {testResults.ownerProjects.map((address, index) => (
@@ -451,12 +448,9 @@ const Profile: React.FC = () => {
                         </div>
                       )}
                       
-                      {/* Developer Projects Section - Styled exactly like the test results */}
-                      {testResults.devProjects && testResults.devProjects.length > 0 && (
+                      {/* Show Developer Projects only if Developer */}
+                      {!isClient && testResults.devProjects && testResults.devProjects.length > 0 && (
                         <div>
-                          <h3 className={`text-md font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
-                            Projects by Developer:
-                          </h3>
                           <div className={`p-3 rounded ${darkMode ? 'bg-dark-700' : 'bg-gray-50'}`}>
                             <ul className="list-disc pl-5">
                               {testResults.devProjects.map((address, index) => (
