@@ -742,7 +742,7 @@ const ProjectDetails: React.FC = () => {
             
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Amount (ETH)
+                Amount (avax)
               </label>
               <input
                 type="text"
@@ -883,7 +883,7 @@ const ProjectDetails: React.FC = () => {
           
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Amount (ETH)
+              Amount (avax)
             </label>
             <input
               type="text"
