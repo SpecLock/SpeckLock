@@ -251,6 +251,14 @@ const ProjectDetails: React.FC = () => {
   const [proofLink, setProofLink] = useState('');
   const [proofDescription, setProofDescription] = useState('');
   
+  // Add Milestone modal states
+  const [addMilestoneModalOpen, setAddMilestoneModalOpen] = useState(false);
+  const [milestoneTitle, setMilestoneTitle] = useState('');
+  const [milestoneDescription, setMilestoneDescription] = useState('');
+  const [milestoneDueDate, setMilestoneDueDate] = useState('');
+  const [milestoneAmount, setMilestoneAmount] = useState('');
+  const [isAddingMilestone, setIsAddingMilestone] = useState(false);
+  
   // New states for blockchain data
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -275,41 +283,85 @@ const ProjectDetails: React.FC = () => {
     }
   };
 
+  // Function to add a milestone
+  const submitAddMilestone = async () => {
+    if (!id || !milestoneTitle || !milestoneDescription || !milestoneDueDate || !milestoneAmount) {
+      alert('Please fill in all milestone details');
+      return;
+    }
+    
+    try {
+      setIsAddingMilestone(true);
+      const service = new ProjectContractService();
+      await service.connectWallet();
+      
+      // Convert the date string to a UNIX timestamp
+      const tentativeDate = Math.floor(new Date(milestoneDueDate).getTime() / 1000);
+      
+      // Call the contract method
+      await service.addMilestone(
+        id,
+        milestoneTitle,
+        tentativeDate,
+        milestoneDescription,
+        milestoneAmount
+      );
+      
+      // Close modal and reset form
+      setAddMilestoneModalOpen(false);
+      setMilestoneTitle('');
+      setMilestoneDescription('');
+      setMilestoneDueDate('');
+      setMilestoneAmount('');
+      
+      // Reload project data
+      fetchProjectData();
+      
+      alert('Milestone added successfully!');
+    } catch (error) {
+      console.error("Error adding milestone:", error);
+      alert("Failed to add milestone. See console for details.");
+    } finally {
+      setIsAddingMilestone(false);
+    }
+  };
+  
+  // Refactor the fetchProjectData function to be reusable after adding a milestone
+  const fetchProjectData = async () => {
+    if (!id) return;
+    
+    try {
+      setLoading(true);
+      const service = new ProjectContractService();
+      
+      // Fetch project details
+      const details = await service.getProjectDetailsV2(id);
+      setProjectDetails(details);
+      
+      // Fetch milestones
+      const milestonesData = await service.getAllMilestones(id);
+      setMilestones(milestonesData);
+
+      // Calculate progress
+      const completedMilestones = milestonesData.filter(m => m.completed).length;
+      const progress = milestonesData.length > 0 
+        ? Math.round((completedMilestones / milestonesData.length) * 100)
+        : 0;
+      setProjectProgress(progress);
+      
+      // Set last activity (mock for now as it's not in the contract)
+      setLastActivity('2 hours ago');
+      
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching project data:", err);
+      setError("Failed to load project data. Please check if the contract address is valid.");
+      setLoading(false);
+    }
+  };
+  
   // Fetch project data
   useEffect(() => {
-    const fetchProjectData = async () => {
-      if (!id) return;
-      
-      try {
-        setLoading(true);
-        const service = new ProjectContractService();
-        
-        // Fetch project details
-        const details = await service.getProjectDetailsV2(id);
-        setProjectDetails(details);
-        
-        // Fetch milestones
-        const milestonesData = await service.getAllMilestones(id);
-        setMilestones(milestonesData);
-
-        // Calculate progress
-        const completedMilestones = milestonesData.filter(m => m.completed).length;
-        const progress = milestonesData.length > 0 
-          ? Math.round((completedMilestones / milestonesData.length) * 100)
-          : 0;
-        setProjectProgress(progress);
-        
-        // Set last activity (mock for now as it's not in the contract)
-        setLastActivity('2 hours ago');
-        
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching project data:", err);
-        setError("Failed to load project data. Please check if the contract address is valid.");
-        setLoading(false);
-      }
-    };
-    
     fetchProjectData();
   }, [id]);
   
@@ -543,7 +595,10 @@ const ProjectDetails: React.FC = () => {
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold text-gray-800">Project Milestones</h2>
                 {isClient && (
-                  <button className="text-sm flex items-center text-indigo-600 hover:text-indigo-800">
+                  <button 
+                    className="text-sm flex items-center text-indigo-600 hover:text-indigo-800"
+                    onClick={() => setAddMilestoneModalOpen(true)}
+                  >
                     <PlusCircle size={16} className="mr-1" />
                     Add Milestone
                   </button>
@@ -779,6 +834,90 @@ const ProjectDetails: React.FC = () => {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Add Milestone Modal */}
+      <Modal
+        isOpen={addMilestoneModalOpen}
+        onClose={() => setAddMilestoneModalOpen(false)}
+        title="Add New Milestone"
+      >
+        <div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Title
+            </label>
+            <input
+              type="text"
+              value={milestoneTitle}
+              onChange={(e) => setMilestoneTitle(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Milestone title"
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Description
+            </label>
+            <textarea
+              value={milestoneDescription}
+              onChange={(e) => setMilestoneDescription(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Describe what needs to be accomplished for this milestone..."
+            ></textarea>
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Due Date
+            </label>
+            <input
+              type="date"
+              value={milestoneDueDate}
+              onChange={(e) => setMilestoneDueDate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Amount (ETH)
+            </label>
+            <input
+              type="text"
+              value={milestoneAmount}
+              onChange={(e) => setMilestoneAmount(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="0.0"
+            />
+          </div>
+          
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setAddMilestoneModalOpen(false)}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              disabled={isAddingMilestone}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submitAddMilestone}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center"
+              disabled={isAddingMilestone}
+            >
+              {isAddingMilestone ? (
+                <>
+                  <Loader2 size={16} className="mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                'Add Milestone'
+              )}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
