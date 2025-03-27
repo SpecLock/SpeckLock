@@ -70,7 +70,10 @@ const Profile: React.FC = () => {
   const [activeTab, setActiveTab] = useState('projects');
   const [projects, setProjects] = useState<ProjectDetails[]>([]);
   const [loading, setLoading] = useState(false);
-  // Add state for test results
+  const [rawProjects, setRawProjects] = useState<{
+    ownerProjects: string[];
+    devProjects: string[];
+  }>({ ownerProjects: [], devProjects: [] });
   const [testResults, setTestResults] = useState<{
     ownerProjects: string[] | null;
     devProjects: string[] | null;
@@ -80,7 +83,86 @@ const Profile: React.FC = () => {
   const contractService = new ContractService();
   const projectService = new ProjectContractService();
 
-  // Replace the test useEffect with this enhanced version
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (account && isConnected) {
+        try {
+          console.log('%c Fetching Projects', 'background: #222; color: #bada55; font-size: 16px;');
+          console.log('%c Account:', 'color: #00f', account);
+          
+          // Get owner projects
+          console.log('%c Calling getProjectsByOwner...', 'color: #0a0');
+          const ownerProjects = await contractService.getProjectsByOwner(account);
+          console.log('%c Owner Projects:', 'color: #0a0', ownerProjects);
+          
+          // Get developer projects
+          console.log('%c Calling getProjectsByDeveloper...', 'color: #0a0');
+          const devProjects = await contractService.getProjectsByDeveloper(account);
+          console.log('%c Developer Projects:', 'color: #0a0', devProjects);
+          
+          // Store raw project addresses
+          setRawProjects({
+            ownerProjects,
+            devProjects
+          });
+        } catch (error) {
+          console.error('%c Error fetching projects:', 'color: #f00', error);
+        }
+      }
+    };
+
+    fetchProjects();
+  }, [account, isConnected]);
+
+  useEffect(() => {
+    const loadProjects = async () => {
+      if (isConnected && account) {
+        setLoading(true);
+        try {
+          // Combine owner and developer projects without duplicates
+          let projectAddresses: string[] = [];
+          
+          // If client, focus on owner projects but include any developer projects too
+          if (isClient) {
+            projectAddresses = [...rawProjects.ownerProjects];
+            // Also include any developer projects not already in the list
+            rawProjects.devProjects.forEach(addr => {
+              if (!projectAddresses.includes(addr)) {
+                projectAddresses.push(addr);
+              }
+            });
+          } else {
+            // If developer, focus on dev projects but include any owner projects too
+            projectAddresses = [...rawProjects.devProjects];
+            // Also include any owner projects not already in the list
+            rawProjects.ownerProjects.forEach(addr => {
+              if (!projectAddresses.includes(addr)) {
+                projectAddresses.push(addr);
+              }
+            });
+          }
+          
+          if (projectAddresses.length > 0) {
+            const projectDetails = await Promise.all(
+              projectAddresses.map(address => projectService.getProjectDetails(address))
+            );
+            
+            setProjects(projectDetails);
+          } else {
+            setProjects([]);
+          }
+        } catch (error) {
+          console.error('Error loading project details:', error);
+          setProjects([]);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProjects();
+  }, [isConnected, account, isClient, isDeveloper, rawProjects]);
+
   useEffect(() => {
     const testContractService = async () => {
       if (account && isConnected) {
@@ -117,34 +199,6 @@ const Profile: React.FC = () => {
 
     testContractService();
   }, [account, isConnected]);
-
-  useEffect(() => {
-    const loadProjects = async () => {
-      if (isConnected && account) {
-        setLoading(true);
-        try {
-          let projectAddresses: string[];
-          if (isClient) {
-            projectAddresses = await contractService.getProjectsByOwner(account);
-          } else {
-            projectAddresses = await contractService.getProjectsByDeveloper(account);
-          }
-          
-          const projectDetails = await Promise.all(
-            projectAddresses.map(address => projectService.getProjectDetails(address))
-          );
-          
-          setProjects(projectDetails);
-        } catch (error) {
-          console.error('Error loading projects:', error);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadProjects();
-  }, [isConnected, account, isClient, isDeveloper]);
 
   const userData = {
     address: account ? `${account.slice(0, 6)}...${account.slice(-4)}` : '',
@@ -188,60 +242,6 @@ const Profile: React.FC = () => {
   
   return (
     <div className="container mx-auto">
-      {/* Test Results Display - Add this section */}
-      {testResults.ownerProjects !== null || testResults.devProjects !== null || testResults.error ? (
-        <div className={`mb-6 p-4 rounded-lg ${darkMode ? 'bg-dark-800 border border-dark-700' : 'bg-white border border-gray-200'} shadow-md`}>
-          <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} mb-2`}>
-            Contract Function Test Results
-          </h2>
-          
-          {testResults.error ? (
-            <div className="p-3 bg-red-100 text-red-800 rounded mb-3">
-              <strong>Error:</strong> {testResults.error}
-            </div>
-          ) : (
-            <>
-              <div className="mb-3">
-                <h3 className={`text-md font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
-                  Projects by Owner:
-                </h3>
-                <div className={`p-3 rounded ${darkMode ? 'bg-dark-700' : 'bg-gray-50'}`}>
-                  {testResults.ownerProjects?.length === 0 ? (
-                    <span className="text-gray-500">No projects found</span>
-                  ) : (
-                    <ul className="list-disc pl-5">
-                      {testResults.ownerProjects?.map((address, index) => (
-                        <li key={index} className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
-                          {address}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-              
-              <div>
-                <h3 className={`text-md font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
-                  Projects by Developer:
-                </h3>
-                <div className={`p-3 rounded ${darkMode ? 'bg-dark-700' : 'bg-gray-50'}`}>
-                  {testResults.devProjects?.length === 0 ? (
-                    <span className="text-gray-500">No projects found</span>
-                  ) : (
-                    <ul className="list-disc pl-5">
-                      {testResults.devProjects?.map((address, index) => (
-                        <li key={index} className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
-                          {address}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      ) : null}
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Profile Card */}
@@ -405,55 +405,95 @@ const Profile: React.FC = () => {
                     <div className="text-center py-8">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
                     </div>
-                  ) : projects.length > 0 ? (
-                    <div className="space-y-4">
-                      {projects.map((project) => (
-                        <Link
-                          key={project.address}
-                          to={`/project/${project.address}`}
-                          className={`block ${darkMode ? 'border-dark-700 bg-dark-700' : 'border-gray-200 bg-white'} border rounded-lg overflow-hidden hover:shadow-md transition-shadow`}
-                        >
-                          <div className="px-6 py-4">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                                  {project.name}
-                                </h3>
-                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
-                                  {project.description}
-                                </p>
-                                <div className="flex items-center text-sm mt-2">
-                                  <span className={`flex items-center ${
-                                    project.status === 2 
-                                      ? darkMode ? 'text-green-400' : 'text-green-600'
-                                      : darkMode ? 'text-blue-400' : 'text-blue-600'
-                                  }`}>
-                                    {project.status === 2 ? (
-                                      <CheckCircle2 size={14} className="mr-1" />
-                                    ) : (
-                                      <Clock size={14} className="mr-1" />
-                                    )}
-                                    {project.status === 2 ? 'Completed' : 'In Progress'}
-                                  </span>
-                                  <span className="mx-2">•</span>
-                                  <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                                    Contract: {`${project.address.slice(0, 6)}...${project.address.slice(-4)}`}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                                  {project.totalValue} AVAX
-                                </p>
-                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                  {projectService.formatLastActivity(project.lastActivity)}
-                                </p>
-                              </div>
-                            </div>
+                  ) : (testResults.ownerProjects && testResults.ownerProjects.length > 0) || 
+                       (testResults.devProjects && testResults.devProjects.length > 0) ? (
+                    <>
+                      {/* Owner Projects Section - Styled exactly like the test results */}
+                      {testResults.ownerProjects && testResults.ownerProjects.length > 0 && (
+                        <div className="mb-3">
+                          <h3 className={`text-md font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                            Projects by Owner:
+                          </h3>
+                          <div className={`p-3 rounded ${darkMode ? 'bg-dark-700' : 'bg-gray-50'}`}>
+                            <ul className="list-disc pl-5">
+                              {testResults.ownerProjects.map((address, index) => (
+                                <li key={index} className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                                  <div className="flex items-center gap-2">
+                                    <span>{address}</span>
+                                    <a
+                                      href={`https://testnet.snowtrace.io/address/${address}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`inline-flex items-center text-sm ${
+                                        darkMode 
+                                          ? 'text-indigo-400 hover:text-indigo-300' 
+                                          : 'text-indigo-600 hover:text-indigo-700'
+                                      }`}
+                                    >
+                                      <ExternalLink size={12} className="mr-1" />
+                                      View on Snowtrace
+                                    </a>
+                                    <Link
+                                      to={`/project/${address}`}
+                                      className={`inline-flex items-center text-sm ${
+                                        darkMode 
+                                          ? 'text-indigo-400 hover:text-indigo-300' 
+                                          : 'text-indigo-600 hover:text-indigo-700'
+                                      }`}
+                                    >
+                                      View Details →
+                                    </Link>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
-                        </Link>
-                      ))}
-                    </div>
+                        </div>
+                      )}
+                      
+                      {/* Developer Projects Section - Styled exactly like the test results */}
+                      {testResults.devProjects && testResults.devProjects.length > 0 && (
+                        <div>
+                          <h3 className={`text-md font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                            Projects by Developer:
+                          </h3>
+                          <div className={`p-3 rounded ${darkMode ? 'bg-dark-700' : 'bg-gray-50'}`}>
+                            <ul className="list-disc pl-5">
+                              {testResults.devProjects.map((address, index) => (
+                                <li key={index} className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                                  <div className="flex items-center gap-2">
+                                    <span>{address}</span>
+                                    <a
+                                      href={`https://testnet.snowtrace.io/address/${address}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`inline-flex items-center text-sm ${
+                                        darkMode 
+                                          ? 'text-indigo-400 hover:text-indigo-300' 
+                                          : 'text-indigo-600 hover:text-indigo-700'
+                                      }`}
+                                    >
+                                      <ExternalLink size={12} className="mr-1" />
+                                      View on Snowtrace
+                                    </a>
+                                    <Link
+                                      to={`/project/${address}`}
+                                      className={`inline-flex items-center text-sm ${
+                                        darkMode 
+                                          ? 'text-indigo-400 hover:text-indigo-300' 
+                                          : 'text-indigo-600 hover:text-indigo-700'
+                                      }`}
+                                    >
+                                      View Details →
+                                    </Link>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className={`text-center py-8 ${darkMode ? 'bg-dark-700' : 'bg-gray-50'} rounded-lg`}>
                       <PlusCircle size={48} className={`mx-auto ${darkMode ? 'text-gray-500' : 'text-gray-400'} mb-4`} />
